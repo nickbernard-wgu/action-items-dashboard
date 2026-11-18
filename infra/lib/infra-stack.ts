@@ -5,6 +5,9 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigatewayv2integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as path from 'path';
@@ -85,6 +88,54 @@ export class InfraStack extends cdk.Stack {
     amplifyApp.addBranch('main', {
       autoBuild: true,
     });
+
+    // Extractor Lambda: syncs Confluence → DynamoDB on a schedule
+    const extractorFn = new lambda.Function(this, 'ExtractorFunction', {
+      functionName: 'action-items-extractor',
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.handler',
+      code: lambda.Code.fromAsset('../lambdas/extractor', {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp -r . /asset-output'
+          ],
+          // Local bundler: used when Docker is unavailable (e.g. CI without Docker)
+          local: {
+            tryBundle(outputDir: string): boolean {
+              try {
+                const { execSync } = require('child_process');
+                execSync(
+                  `pip3 install -r requirements.txt -t "${outputDir}" --quiet && cp -r . "${outputDir}"`,
+                  { cwd: path.join(__dirname, '../../lambdas/extractor'), stdio: 'inherit' }
+                );
+                return true;
+              } catch {
+                return false;
+              }
+            },
+          },
+        },
+      }),
+      environment: {
+        DYNAMODB_TABLE: actionItemsTable.tableName,
+      },
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_MONTH,
+    });
+
+    actionItemsTable.grantReadWriteData(extractorFn);
+    confluenceSecret.grantRead(extractorFn);
+
+    const scheduleRule = new events.Rule(this, 'ExtractorSchedule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
+      description: 'Trigger action items extractor Lambda every 15 minutes',
+    });
+    scheduleRule.addTarget(new targets.LambdaFunction(extractorFn));
+
+    new cdk.CfnOutput(this, 'ExtractorFunctionName', { value: extractorFn.functionName });
 
     // Outputs
     new cdk.CfnOutput(this, 'TableName', { value: actionItemsTable.tableName });
