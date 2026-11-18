@@ -38,3 +38,14 @@ jobs:
           cache-dependency-path: infra/package-lock.json
       - run: npm ci
       - run: npx cdk synth
+
+  lambda-test:
+    name: Lambda Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r lambdas/api/requirements.txt
+      - run: pytest lambdas/api/get_action_items/tests/ -v

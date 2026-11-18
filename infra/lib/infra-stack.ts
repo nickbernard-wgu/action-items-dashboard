@@ -4,6 +4,10 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as apigatewayv2integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import * as path from 'path';
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -33,6 +37,35 @@ export class InfraStack extends cdk.Stack {
       },
     });
 
+    // Lambda: GET /action-items
+    const getActionItemsLambda = new lambda.Function(this, 'GetActionItemsLambda', {
+      functionName: 'get-action-items',
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambdas/api/get_action_items')),
+      environment: {
+        TABLE_NAME: actionItemsTable.tableName,
+      },
+    });
+
+    actionItemsTable.grantReadData(getActionItemsLambda);
+
+    // HTTP API Gateway
+    const httpApi = new apigatewayv2.HttpApi(this, 'ActionItemsHttpApi', {
+      apiName: 'action-items-api',
+      corsPreflight: {
+        allowHeaders: ['Content-Type'],
+        allowMethods: [apigatewayv2.CorsHttpMethod.GET, apigatewayv2.CorsHttpMethod.OPTIONS],
+        allowOrigins: ['*'],
+      },
+    });
+
+    httpApi.addRoutes({
+      path: '/action-items',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('GetActionItemsIntegration', getActionItemsLambda),
+    });
+
     // AWS Amplify app connected to main branch
     const amplifyApp = new amplify.App(this, 'ActionItemsApp', {
       appName: 'action-items-dashboard',
@@ -57,5 +90,9 @@ export class InfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'TableName', { value: actionItemsTable.tableName });
     new cdk.CfnOutput(this, 'SecretArn', { value: confluenceSecret.secretArn });
     new cdk.CfnOutput(this, 'AmplifyAppId', { value: amplifyApp.appId });
+    new cdk.CfnOutput(this, 'ActionItemsApiUrl', {
+      value: httpApi.apiEndpoint,
+      exportName: 'ActionItemsApiUrl',
+    });
   }
 }
