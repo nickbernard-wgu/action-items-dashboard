@@ -53,12 +53,27 @@ export class InfraStack extends cdk.Stack {
 
     actionItemsTable.grantReadData(getActionItemsLambda);
 
+    // Lambda: POST /action-items/{id}/complete
+    const completeActionItemLambda = new lambda.Function(this, 'CompleteActionItemLambda', {
+      functionName: 'complete-action-item',
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../lambdas/api/complete_action_item')),
+      environment: {
+        TABLE_NAME: actionItemsTable.tableName,
+        SECRET_NAME: 'action-items-dashboard/confluence-credentials',
+      },
+    });
+
+    actionItemsTable.grant(completeActionItemLambda, 'dynamodb:GetItem', 'dynamodb:UpdateItem');
+    confluenceSecret.grantRead(completeActionItemLambda);
+
     // HTTP API Gateway
     const httpApi = new apigatewayv2.HttpApi(this, 'ActionItemsHttpApi', {
       apiName: 'action-items-api',
       corsPreflight: {
         allowHeaders: ['Content-Type'],
-        allowMethods: [apigatewayv2.CorsHttpMethod.GET, apigatewayv2.CorsHttpMethod.OPTIONS],
+        allowMethods: [apigatewayv2.CorsHttpMethod.GET, apigatewayv2.CorsHttpMethod.POST, apigatewayv2.CorsHttpMethod.OPTIONS],
         allowOrigins: ['*'],
       },
     });
@@ -67,6 +82,12 @@ export class InfraStack extends cdk.Stack {
       path: '/action-items',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2integrations.HttpLambdaIntegration('GetActionItemsIntegration', getActionItemsLambda),
+    });
+
+    httpApi.addRoutes({
+      path: '/action-items/{id}/complete',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2integrations.HttpLambdaIntegration('CompleteActionItemIntegration', completeActionItemLambda),
     });
 
     // AWS Amplify app connected to main branch
