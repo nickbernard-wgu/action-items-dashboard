@@ -99,9 +99,9 @@ describe('owner groups', () => {
     )
     render(<App />)
     await screen.findByText('Task A1')
-    expect(screen.getByText(/Alice/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /Alice/ })).toBeInTheDocument()
     expect(screen.getByText('2 open')).toBeInTheDocument()
-    expect(screen.getByText(/Bob/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /Bob/ })).toBeInTheDocument()
     expect(screen.getByText('1 open')).toBeInTheDocument()
   })
 

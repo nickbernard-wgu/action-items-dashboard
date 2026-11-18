@@ -164,3 +164,220 @@
   color: #991B1B;
   margin-top: 24px;
 }
+
+/* ── Filter bar ───────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.owner-select {
+  font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+}
+
+.owner-select:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+.bucket-filter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bucket-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.bucket-btn.active {
+  background: #ede9fe;
+  border-color: #6366f1;
+  color: #4338ca;
+}
+
+.bucket-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.filter-count {
+  font-size: 13px;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+/* ── Mark complete button ─────────────────────────────────── */
+.item-actions {
+  margin-top: 10px;
+}
+
+.btn-mark-complete {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.btn-mark-complete:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* ── Confirmation modal ───────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.modal-heading {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 12px;
+}
+
+.modal-body {
+  font-size: 14px;
+  color: #374151;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-confirm {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.btn-confirm:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.btn-confirm:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Error toast ──────────────────────────────────────────── */
+.error-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #991b1b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1100;
+  max-width: 480px;
+  white-space: nowrap;
+}
+
+.toast-dismiss {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.75;
+}
+
+.toast-dismiss:hover {
+  opacity: 1;
+}
