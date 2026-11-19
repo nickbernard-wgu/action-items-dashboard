@@ -7,6 +7,7 @@ the _sync_meta DynamoDB item to skip pages that haven't changed.
 """
 
 import boto3
+from botocore.exceptions import ClientError
 import concurrent.futures
 import hashlib
 import json as _json
@@ -63,6 +64,12 @@ def get_credentials() -> dict:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
+def is_excluded_page(title: str) -> bool:
+    """Case-insensitive substring match against the excluded-title fragments."""
+    lowered = title.lower()
+    return any(fragment in lowered for fragment in _EXCLUDED_PAGES)
+
+
 def should_skip_page(cached_versions: dict, page_id: str, current_version: int) -> bool:
     return cached_versions.get(str(page_id)) == current_version
 
@@ -115,7 +122,7 @@ def handler(event, context):
         title = child["title"]
         version = child["version"]
 
-        if title.lower().strip() in _EXCLUDED_PAGES:
+        if is_excluded_page(title):
             _log("page_processed", page_id=page_id, title=title, items_written=0, skipped=True)
             continue
 
@@ -204,9 +211,20 @@ def handler(event, context):
             }
 
             try:
-                table.put_item(Item=item)
+                # Never overwrite an item the dashboard already marked complete
+                table.put_item(
+                    Item=item,
+                    ConditionExpression="attribute_not_exists(item_id) OR #st <> :done",
+                    ExpressionAttributeNames={"#st": "status"},
+                    ExpressionAttributeValues={":done": "complete"},
+                )
                 page_items_written += 1
                 items_written += 1
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                    _log("item_already_complete", item_id=item_id)
+                else:
+                    _log("dynamo_write_error", item_id=item_id, error=str(e))
             except Exception as e:
                 _log("dynamo_write_error", item_id=item_id, error=str(e))
 

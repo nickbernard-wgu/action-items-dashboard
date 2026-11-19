@@ -42,6 +42,10 @@ def lambda_handler(event, context):
                 break
             query_kwargs["ExclusiveStartKey"] = last_key
 
+        # The extractor records every sync run on the _sync_meta item, which has no
+        # status and so never appears in the status index.
+        sync_meta = table.get_item(Key={"item_id": "_sync_meta"}).get("Item") or {}
+
     except ClientError as exc:
         logger.error(json.dumps({"error": str(exc)}))
         return {
@@ -53,14 +57,13 @@ def lambda_handler(event, context):
     # Exclude sentinel items whose item_id starts with "_"
     filtered = [item for item in items if not item.get("item_id", "").startswith("_")]
 
-    # Determine last_synced: most recent ISO datetime across all items
-    last_synced = None
-    for item in filtered:
-        val = item.get("last_synced")
-        if val is not None:
-            str_val = str(val)
-            if last_synced is None or str_val > last_synced:
-                last_synced = str_val
+    # last_synced: the last sync run (_sync_meta); fall back to the newest open item
+    last_synced = str(sync_meta["last_synced"]) if sync_meta.get("last_synced") else None
+    if last_synced is None:
+        for item in filtered:
+            val = item.get("last_synced")
+            if val is not None and (last_synced is None or str(val) > last_synced):
+                last_synced = str(val)
 
     return {
         "statusCode": 200,

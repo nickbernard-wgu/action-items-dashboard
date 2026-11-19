@@ -47,5 +47,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r lambdas/api/requirements.txt
-      - run: pytest lambdas/api/get_action_items/tests/ -v
+      - run: pip install -r lambdas/api/requirements.txt -r lambdas/extractor/requirements.txt -r lambdas/api/complete_action_item/requirements.txt
+      - run: pytest lambdas -v

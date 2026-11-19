@@ -64,3 +64,42 @@ def test_get_credentials_calls_secrets_manager():
     assert 'username' in creds
     assert 'api_token' in creds
     assert 'site_url' in creds
+
+
+def test_excluded_page_titles_match_by_substring():
+    from lambdas.extractor.handler import is_excluded_page
+    assert is_excluded_page("Open Action Items Dashboard")
+    assert is_excluded_page("Action Items Dashboard - Archived")
+    assert is_excluded_page("11.3.2026 - TPM Working Group Template Review")
+    assert not is_excluded_page("10.15.2026 - IDKit Team Sprint Planning")
+
+
+def test_put_item_never_overwrites_completed_item():
+    import os
+    import boto3
+    from moto import mock_aws
+    with mock_aws():
+        os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+        os.environ.setdefault("AWS_ACCESS_KEY_ID", "test")
+        os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test")
+        ddb = boto3.resource("dynamodb", region_name="us-east-1")
+        table = ddb.create_table(
+            TableName="t",
+            KeySchema=[{"AttributeName": "item_id", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "item_id", "AttributeType": "S"}],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        from botocore.exceptions import ClientError
+        cond = dict(
+            ConditionExpression="attribute_not_exists(item_id) OR #st <> :done",
+            ExpressionAttributeNames={"#st": "status"},
+            ExpressionAttributeValues={":done": "complete"},
+        )
+        table.put_item(Item={"item_id": "x", "status": "complete"})
+        try:
+            table.put_item(Item={"item_id": "x", "status": "open"}, **cond)
+            raised = False
+        except ClientError as e:
+            raised = e.response["Error"]["Code"] == "ConditionalCheckFailedException"
+        assert raised
+        assert table.get_item(Key={"item_id": "x"})["Item"]["status"] == "complete"

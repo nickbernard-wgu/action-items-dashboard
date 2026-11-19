@@ -154,3 +154,22 @@ def test_dynamodb_client_error_returns_500():
     assert body == {"error": "Internal server error"}
     assert "boom" not in result["body"]
     assert "InternalServerError" not in result["body"]
+
+
+# ---------------------------------------------------------------------------
+# last_synced comes from the _sync_meta record, even when no items are open
+# ---------------------------------------------------------------------------
+@moto.mock_aws
+def test_last_synced_comes_from_sync_meta_when_no_open_items():
+    os.environ["TABLE_NAME"] = TABLE_NAME
+    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    table = _make_table(dynamodb)
+    table.put_item(Item={"item_id": "_sync_meta", "last_synced": "2026-11-18T12:00:00Z"})
+    table.put_item(Item={"item_id": "done-1", "status": "complete", "last_synced": "2026-11-01T00:00:00Z"})
+
+    import importlib
+    import lambdas.api.get_action_items.handler as h
+    importlib.reload(h)
+    body = json.loads(h.lambda_handler({}, None)["body"])
+    assert body["items"] == []
+    assert body["last_synced"] == "2026-11-18T12:00:00Z"
