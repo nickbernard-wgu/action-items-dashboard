@@ -344,30 +344,84 @@ describe('modal Confirm — API failure', () => {
 // ── Confirm button disabled while in-flight ───────────────────────────────────
 
 describe('Confirm button loading state', () => {
-  it('is disabled while API call is in flight', async () => {
+  it('keeps the modal open with Confirm disabled until the API call settles', async () => {
     const user = userEvent.setup()
     const responseData = makeResponse([makeItem({ item_id: '1', text: 'Fix the pipeline' })])
-    mockFetchGetWithPostPending(responseData)
+    const { resolvePost } = mockFetchGetWithPostPending(responseData)
 
     render(<App />)
     await screen.findByText('Fix the pipeline')
 
     await user.click(screen.getByRole('button', { name: /mark complete/i }))
-
-    // The modal is open; confirm is not in-flight yet (we haven't clicked it)
     const confirmBtn = screen.getByRole('button', { name: /confirm/i })
     expect(confirmBtn).not.toBeDisabled()
 
-    // After clicking, the item is removed optimistically and modal closes,
-    // but we can verify the loading state is applied before the promise resolves
-    // by checking the button is disabled immediately after click when post is pending.
-    // Because our impl does optimistic removal synchronously and closes modal,
-    // we verify the button showed loading text "Saving…" if it stays open.
-    // The spec says: modal item removed optimistically → modal closes → API called.
-    // So we just confirm the item disappears (optimistic):
     await user.click(confirmBtn)
+
+    // In flight: modal still open, button disabled, item already removed optimistically
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /saving/i })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /^mark complete$/i })).not.toBeInTheDocument()
+
+    resolvePost({ ok: true, json: () => Promise.resolve({}) })
     await waitFor(() => {
-      expect(screen.queryByText('Fix the pipeline')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+
+  it('closes the modal after a failed call and restores the item', async () => {
+    const user = userEvent.setup()
+    const responseData = makeResponse([makeItem({ item_id: '1', text: 'Fix the pipeline' })])
+    const { resolvePost } = mockFetchGetWithPostPending(responseData)
+
+    render(<App />)
+    await screen.findByText('Fix the pipeline')
+    await user.click(screen.getByRole('button', { name: /mark complete/i }))
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    resolvePost({ ok: false, status: 500 })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Fix the pipeline')).toBeInTheDocument()
+  })
+})
+
+// ── Restore uses a per-action snapshot, not the mount-time data ──────────────
+
+describe('failure restore after an earlier successful completion', () => {
+  it('restores the failed item in place and keeps the earlier completed item removed', async () => {
+    const user = userEvent.setup()
+    const data = makeResponse([
+      makeItem({ item_id: 'a', text: 'Task A' }),
+      makeItem({ item_id: 'b', text: 'Task B' }),
+      makeItem({ item_id: 'c', text: 'Task C' }),
+    ])
+    global.fetch = vi.fn().mockImplementation((url, opts) => {
+      if (opts && opts.method === 'POST') {
+        return url.includes('/b/complete')
+          ? Promise.resolve({ ok: false, status: 500 })
+          : Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(data) })
+    })
+
+    render(<App />)
+    await screen.findByText('Task A')
+
+    // Complete A (succeeds)
+    await user.click(screen.getAllByRole('button', { name: /mark complete/i })[0])
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    await waitFor(() => expect(screen.queryByText('Task A')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    // Complete B (fails)
+    await user.click(screen.getAllByRole('button', { name: /mark complete/i })[0])
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await waitFor(() => expect(screen.getByText('Task B')).toBeInTheDocument())
+    expect(screen.queryByText('Task A')).not.toBeInTheDocument()
+    const texts = ['Task B', 'Task C'].map((t) => screen.getByText(t))
+    expect(texts[0].compareDocumentPosition(texts[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })

@@ -260,12 +260,14 @@ export default function App() {
 
   const handleConfirm = async () => {
     const item = modalItem
+    if (!item || modalLoading) return
+
+    // Per-action snapshot of the list order, used to restore position on failure
+    const snapshot = items
     setModalLoading(true)
 
-    // Optimistically remove
+    // Optimistically remove; the modal stays open (Confirm disabled) until the call settles
     setItems((prev) => prev.filter((i) => i.item_id !== item.item_id))
-    setModalItem(null)
-    setModalLoading(false)
 
     try {
       const res = await fetch(`${API_URL}/action-items/${item.item_id}/complete`, {
@@ -274,20 +276,15 @@ export default function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       // success: stays removed
     } catch {
-      // Restore item at original position
+      // Restore item at its original position, keeping any other removals intact
       setItems((prev) => {
-        const originalItems = data?.items ?? []
-        const restored = []
-        for (const orig of originalItems) {
-          if (orig.item_id === item.item_id) {
-            restored.push(item)
-          } else if (prev.find((p) => p.item_id === orig.item_id)) {
-            restored.push(orig)
-          }
-        }
-        return restored
+        const present = new Set(prev.map((p) => p.item_id))
+        return snapshot.filter((s) => s.item_id === item.item_id || present.has(s.item_id))
       })
       showToast('Failed to mark complete — please try again')
+    } finally {
+      setModalItem(null)
+      setModalLoading(false)
     }
   }
 
