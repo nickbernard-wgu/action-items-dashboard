@@ -1,7 +1,6 @@
 import json
 import os
-import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, patch
 
 # Set env vars before importing the handler
 os.environ.setdefault('TABLE_NAME', 'action-items-test')
@@ -11,7 +10,6 @@ os.environ.setdefault('AWS_ACCESS_KEY_ID', 'test')
 os.environ.setdefault('AWS_SECRET_ACCESS_KEY', 'test')
 
 import lambdas.api.complete_action_item.handler as h
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

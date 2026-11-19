@@ -201,8 +201,6 @@ export default function App() {
   const toastTimerRef = useRef(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
     fetch(`${API_URL}/action-items`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)

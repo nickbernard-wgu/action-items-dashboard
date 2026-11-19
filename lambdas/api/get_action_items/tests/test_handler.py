@@ -1,9 +1,8 @@
 import json
 import os
-import pytest
+from unittest.mock import MagicMock, patch
+
 import boto3
-from decimal import Decimal
-from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
 
 # Set TABLE_NAME and region before importing the handler
@@ -47,9 +46,10 @@ def test_empty_table_returns_empty_items():
     dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
     _make_table(dynamodb)
 
-    from lambdas.api.get_action_items import handler  # noqa: F401
     import importlib
+
     import lambdas.api.get_action_items.handler as h
+    from lambdas.api.get_action_items import handler  # noqa: F401
     importlib.reload(h)
 
     result = h.lambda_handler({}, None)
@@ -82,6 +82,7 @@ def test_open_items_returned_with_last_synced():
     })
 
     import importlib
+
     import lambdas.api.get_action_items.handler as h
     importlib.reload(h)
 
@@ -116,6 +117,7 @@ def test_sync_meta_sentinel_excluded():
     })
 
     import importlib
+
     import lambdas.api.get_action_items.handler as h
     importlib.reload(h)
 
@@ -134,6 +136,7 @@ def test_dynamodb_client_error_returns_500():
     os.environ["TABLE_NAME"] = TABLE_NAME
 
     import importlib
+
     import lambdas.api.get_action_items.handler as h
     importlib.reload(h)
 
@@ -168,6 +171,7 @@ def test_last_synced_comes_from_sync_meta_when_no_open_items():
     table.put_item(Item={"item_id": "done-1", "status": "complete", "last_synced": "2026-11-01T00:00:00Z"})
 
     import importlib
+
     import lambdas.api.get_action_items.handler as h
     importlib.reload(h)
     body = json.loads(h.lambda_handler({}, None)["body"])

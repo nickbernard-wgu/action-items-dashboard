@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 # Ensure the repo root is on sys.path so `lambdas.extractor.*` imports resolve.
 repo_root = os.path.dirname(__file__)

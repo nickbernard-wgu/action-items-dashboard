@@ -5,7 +5,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@aws-cdk/cloud-assembly-schema": "^55.6.0",

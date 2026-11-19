@@ -40,8 +40,9 @@ def test_item_id_stability():
 
 
 def test_get_credentials_calls_secrets_manager():
-    from unittest.mock import patch, MagicMock
     import json
+    from unittest.mock import MagicMock, patch
+
     import lambdas.extractor.handler as h
 
     h._credentials_cache = None  # reset cache
@@ -76,6 +77,7 @@ def test_excluded_page_titles_match_by_substring():
 
 def test_put_item_never_overwrites_completed_item():
     import os
+
     import boto3
     from moto import mock_aws
     with mock_aws():

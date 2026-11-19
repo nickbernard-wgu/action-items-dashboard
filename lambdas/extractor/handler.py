@@ -6,24 +6,24 @@ open items to DynamoDB. Uses an incremental version cache stored in
 the _sync_meta DynamoDB item to skip pages that haven't changed.
 """
 
-import boto3
-from botocore.exceptions import ClientError
 import concurrent.futures
 import hashlib
-import json as _json
 import json
+import json as _json
 import logging
 import os
 import uuid
 from datetime import datetime
 
+import boto3
+from botocore.exceptions import ClientError
 from confluence_client import ConfluenceClient
 from text_processing import (
-    canonical_owner,
-    extract_owner,
-    extract_date_from_title,
     age_bucket,
+    canonical_owner,
     compute_item_age,
+    extract_date_from_title,
+    extract_owner,
     extract_tasks_from_body,
 )
 

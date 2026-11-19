@@ -79,3 +79,13 @@ GitHub Actions runs on every push to `main`:
 - `infra-synth`: runs `cdk synth`
 
 Both must pass.
+
+## Checks
+
+CI and the pre-commit hook run the same commands:
+
+- `ruff check .` (Python, config in `ruff.toml`)
+- `npm run lint` in `frontend/` (oxlint, warnings fail the build)
+- `npm run typecheck` in `infra/`
+
+Enable the hook once per clone: `git config core.hooksPath .githooks`

@@ -7,7 +7,7 @@ is intentionally omitted; canonical_owner() uses _OWNER_ALIASES_FALLBACK only.
 
 import html
 import re
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 
 # ─── Compiled Regex Patterns ─────────────────────────────────────────────────
 
