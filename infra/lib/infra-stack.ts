@@ -106,6 +106,9 @@ export class InfraStack extends cdk.Stack {
       }),
     });
 
+    // Baked into the frontend at build time (Vite reads VITE_* variables)
+    amplifyApp.addEnvironment('VITE_API_URL', httpApi.apiEndpoint);
+
     amplifyApp.addBranch('main', {
       autoBuild: true,
     });

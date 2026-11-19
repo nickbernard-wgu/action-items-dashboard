@@ -34,7 +34,7 @@ def _page_body(text='Do the thing', status='incomplete'):
 def _mock_secrets():
     return json.dumps({
         'api_token': 'tok',
-        'email': 'user@example.com',
+        'username': 'user@example.com',
         'site_url': 'example.atlassian.net',
     })
 

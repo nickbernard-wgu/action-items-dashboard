@@ -70,7 +70,7 @@ def lambda_handler(event, context):
 
     creds = json.loads(secret_resp['SecretString'])
     api_token = creds['api_token']
-    email = creds['email']
+    email = creds.get('username') or creds['email']
     site_url = creds['site_url']
 
     logger.info(json.dumps({'step': 'secrets_manager_get', 'result': 'ok'}))
