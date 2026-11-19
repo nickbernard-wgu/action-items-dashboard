@@ -2,8 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as amplify from '@aws-cdk/aws-amplify-alpha';
-import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
@@ -74,9 +72,14 @@ export class InfraStack extends cdk.Stack {
       corsPreflight: {
         allowHeaders: ['Content-Type'],
         allowMethods: [apigatewayv2.CorsHttpMethod.GET, apigatewayv2.CorsHttpMethod.POST, apigatewayv2.CorsHttpMethod.OPTIONS],
-        allowOrigins: ['*'],
+        // Set `-c frontendOrigin=https://main.<appId>.amplifyapp.com` once the frontend URL is known
+        allowOrigins: [this.node.tryGetContext('frontendOrigin') ?? '*'],
       },
     });
+
+    // Public API with no auth: cap request rate so it can't be hammered
+    const defaultStage = httpApi.defaultStage?.node.defaultChild as apigatewayv2.CfnStage;
+    defaultStage.defaultRouteSettings = { throttlingBurstLimit: 20, throttlingRateLimit: 10 };
 
     httpApi.addRoutes({
       path: '/action-items',
@@ -88,29 +91,6 @@ export class InfraStack extends cdk.Stack {
       path: '/action-items/{id}/complete',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2integrations.HttpLambdaIntegration('CompleteActionItemIntegration', completeActionItemLambda),
-    });
-
-    // AWS Amplify app connected to main branch
-    const amplifyApp = new amplify.App(this, 'ActionItemsApp', {
-      appName: 'action-items-dashboard',
-      buildSpec: codebuild.BuildSpec.fromObjectToYaml({
-        version: '1.0',
-        frontend: {
-          phases: {
-            preBuild: { commands: ['cd frontend', 'npm ci'] },
-            build: { commands: ['npm run build'] },
-          },
-          artifacts: { baseDirectory: 'frontend/dist', files: ['**/*'] },
-          cache: { paths: ['frontend/node_modules/**/*'] },
-        },
-      }),
-    });
-
-    // Baked into the frontend at build time (Vite reads VITE_* variables)
-    amplifyApp.addEnvironment('VITE_API_URL', httpApi.apiEndpoint);
-
-    amplifyApp.addBranch('main', {
-      autoBuild: true,
     });
 
     // Extractor Lambda: syncs Confluence → DynamoDB on a schedule
@@ -164,7 +144,6 @@ export class InfraStack extends cdk.Stack {
     // Outputs
     new cdk.CfnOutput(this, 'TableName', { value: actionItemsTable.tableName });
     new cdk.CfnOutput(this, 'SecretArn', { value: confluenceSecret.secretArn });
-    new cdk.CfnOutput(this, 'AmplifyAppId', { value: amplifyApp.appId });
     new cdk.CfnOutput(this, 'ActionItemsApiUrl', {
       value: httpApi.apiEndpoint,
       exportName: 'ActionItemsApiUrl',
